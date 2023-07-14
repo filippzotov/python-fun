@@ -8,107 +8,102 @@ class ConnectFour:
         self.rows = len(self.board)
         self.end = ""
         self.free_space = self.rows * self.columns
+        self.column_height = [i - 1 for _ in range(j)]
 
     def turn(self, color, column):
-        for i in range(len(self.board)):
-            if self.board[i][column] != 0:
-                if i != 0:
-                    self.board[i - 1][column] = color
-                    self.free_space -= 1
-                    self.win_check(i - 1, column, color)
-                    return True
-                else:
-                    return False
-        self.board[len(self.board) - 1][column] = color
-        self.win_check(len(self.board) - 1, column, color)
-        self.free_space -= 1
+        if self.column_height[column] == -1:
+            return False
+        self.board[self.column_height[column]][column] = color
+        self.win_check(self.column_height[column], column, color)
+        self.column_height[column] -= 1
         return True
 
-    def win_check(self, i, j, color):
-        cols = self.check_win_column(i, j, color)
-        rows = self.check_win_row(i, j, color)
-        d1 = self.check_win_diagonal1(i, j, color)
-        d2 = self.check_win_diagonal2(i, j, color)
+    def win_check(self, row, column, color):
+        cols = self.check_win_column(row, column, color)
+        rows = self.check_win_row(row, column, color)
+        d1 = self.check_win_diagonal1(row, column, color)
+        d2 = self.check_win_diagonal2(row, column, color)
         if d1 or d2 or cols or rows:
             self.end = color
 
-    def check_win_column(self, i, j, color):
-        count = 4
-        while i < self.rows:
-            if self.board[i][j] == color:
+    def check_win_column(self, row, column, color):
+        count = 3
+        check_row = row + 1
+        while check_row < self.rows:
+            if self.board[check_row][column] == color:
                 count -= 1
-                i += 1
+                check_row += 1
             else:
                 break
         if count <= 0:
             return True
         return False
 
-    def check_win_row(self, i, j, color):
+    def check_win_row(self, row, column, color):
         count = 3
-        start = j - 1
+        check_column = column - 1
 
-        while start >= 0:
-            if self.board[i][start] == color:
+        while check_column >= 0:
+            if self.board[row][check_column] == color:
                 count -= 1
-                start -= 1
+                check_column -= 1
             else:
                 break
-        start = j + 1
-        while start < self.columns:
-            if self.board[i][start] == color:
+        check_column = column + 1
+        while check_column < self.columns:
+            if self.board[row][check_column] == color:
                 count -= 1
-                start += 1
+                check_column += 1
             else:
                 break
         if count <= 0:
             return True
         return False
 
-    def check_win_diagonal1(self, i, j, color):
+    def check_win_diagonal1(self, row, column, color):
         count = 3
-        start1 = i - 1
-        start2 = j - 1
+        check_row = row - 1
+        check_column = column - 1
 
-        while start1 >= 0 and start2 >= 0:
-            if self.board[start1][start2] == color:
+        while check_row >= 0 and check_column >= 0:
+            if self.board[check_row][check_column] == color:
                 count -= 1
-                start1 -= 1
-                start2 -= 1
+                check_row -= 1
+                check_column -= 1
             else:
                 break
-        start1 = i + 1
-        start2 = j + 1
-        while start1 < self.rows and start2 < self.columns:
-            if self.board[start1][start2] == color:
+        check_row = row + 1
+        check_column = column + 1
+        while check_row < self.rows and check_column < self.columns:
+            if self.board[check_row][check_column] == color:
                 count -= 1
-                start1 += 1
-                start2 += 1
+                check_row += 1
+                check_column += 1
             else:
                 break
         if count <= 0:
             return True
         return False
 
-    def check_win_diagonal2(self, i, j, color):
+    def check_win_diagonal2(self, row, column, color):
         count = 3
-        start1 = i + 1
-        start2 = j - 1
+        check_row = row + 1
+        check_column = column - 1
 
-        while start1 < self.rows and start2 >= 0:
-            if self.board[start1][start2] == color:
+        while check_row < self.rows and check_column >= 0:
+            if self.board[check_row][check_column] == color:
                 count -= 1
-                start1 += 1
-                start2 -= 1
+                check_row += 1
+                check_column -= 1
             else:
                 break
-        start1 = i - 1
-        start2 = j + 1
-        while start1 >= 0 and start2 < self.columns:
-            if self.board[start1][start2] == color:
+        check_row = row - 1
+        check_column = column + 1
+        while check_row >= 0 and check_column < self.columns:
+            if self.board[check_row][check_column] == color:
                 count -= 1
-                start1 -= 1
-                start2 += 1
+                check_row -= 1
+                check_column += 1
             else:
                 break
         if count <= 0:
@@ -120,29 +115,25 @@ class ConnectFour:
             print([i if i else "0" for i in line])
 
 
+def make_random_turn(game, color):
+    turn = random.randint(0, 6)
+    while not game.turn(color, turn):
+        turn = random.randint(0, 6)
+    print(f"last turn {color}, column ", turn)
+    game.display()
+
+
 if __name__ == "__main__":
-    game = ConnectFour(6, 7)
+    rows = 6
+    columns = 7
+    game = ConnectFour(rows, columns)
 
-    RED_TURN = True
-    while True:
-        if RED_TURN:
-            turn = random.randint(0, 6)
-            while not game.turn("R", turn):
-                turn = random.randint(0, 6)
-            RED_TURN = False
-            print("last turn R, column ", turn)
-        else:
-            turn = random.randint(0, 6)
-            while not game.turn("Y", turn):
-                turn = random.randint(0, 6)
-            RED_TURN = True
-            print("last turn Y, column ", turn)
-
-        game.display()
-        print()
-        if not game.free_space:
-            print("draw!")
-            break
+    for i in range(rows * columns):
+        color = "R" if i % 2 == 0 else "Y"
+        make_random_turn(game, color)
         if game.end:
             print(f"{game.end} won!")
+            break
+        if not game.free_space:
+            print("draw!")
             break
