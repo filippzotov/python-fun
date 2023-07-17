@@ -1,0 +1,37 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-sm-3">
+      <ul class="list-group">
+        <li class="list-group-item {% if current == "all" %}active{% endif %}">
+          <a class="text-decoration-none text-dark" href="{% url 'shop'%}">All items</a>
+        </li>
+        {% for cat in category %}
+        <li class="list-group-item {% if current == cat.0 %}active{% endif %}">
+          <a class="text-decoration-none text-dark" href="{% url 'shop-category' cat.0 %}">{{cat.1}}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="col-sm-9">
+      <div class="container">
+        <div class="row">
+          {% for item in menu %}
+          <div class="col">
+            <div class="card" style="width: 18rem">
+              <img src="..." class="card-img-top" alt="..." />
+              <div class="card-body">
+                <h5 class="card-title">{{item.item_name}}</h5>
+                <p class="card-text">{{item.description}} {{item.price}}</p>
+                <a href="{% url 'add-to-cart' item.pk %}" class="btn btn-primary">Add to cart</a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
