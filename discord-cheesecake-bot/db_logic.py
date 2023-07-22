@@ -26,13 +26,13 @@ class User(Base):
     user_id = Column(Integer, primary_key=True)
     name = Column(String)
     money = Column(Integer, default=0)
-    daily_tile = Column(DateTime(timezone=True), server_default=func.now())
+    daily_time = Column(DateTime(timezone=True), server_default=func.now())
     server_id = Column(Integer, ForeignKey("server.server_id"), nullable=False)
     server = relationship("Server", back_populates="users")
 
 
 def connect_db():
-    DATABASE_URL = "sqlite:///budget.db"  # Replace this with your database URL
+    DATABASE_URL = "sqlite:///servers.db"  # Replace this with your database URL
 
     engine = create_engine(DATABASE_URL)
     Session = sessionmaker(bind=engine)
@@ -43,5 +43,40 @@ def connect_db():
 
 
 def server_exists(session, server_id):
-    server = session.query(Server).filter_by(user_id=server_id).first()
+    server = session.query(Server).filter_by(server_id=server_id).first()
     return server if server is not None else None
+
+
+def add_server(session, server_id):
+    new_server = Server(server_id=server_id)
+    session.add(new_server)
+    session.commit()
+    return new_server
+
+
+def add_user(session, user_id, name, server):
+    new_user = User(user_id=user_id, name=name, server_id=server.server_id)
+    server.users.append(new_user)
+    session.add(new_user)
+    session.commit()
+
+
+# 654302335522045972
+
+
+def get_balance(session, user_id, server_id):
+    user = session.query(User).filter_by(server_id=server_id, user_id=user_id).first()
+    return user.money
+
+
+def update_balance(session, user_id, server_id, money_change):
+    user = session.query(User).filter_by(server_id=server_id, user_id=user_id).first()
+    user.money += money_change
+    session.commit()
+    return user.money
+
+
+# session = connect_db()
+# update_balance(session, 654302335522045972, 714612336022781993, 500)
+# ser = get_balance(session, 654302335522045972, 714612336022781993)
+# print(ser)
