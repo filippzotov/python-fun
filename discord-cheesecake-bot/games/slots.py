@@ -33,19 +33,25 @@ class SlotMachine:
 
     def roll_machine(self):
         roll_results = []
-        win_prize = 0
+        win_prize = 1
         for line in self.machine:
             roll_results.append(line.roll())
+
         slot_view = []
 
         for line in zip(*roll_results):
-            slot_view.append(line)
-            if len(set(line)) == 1:
-                win_prize += self.prize[line[0]]
+            letter = random.choice(["🥜", "🧋", "🍆", "🍒", "🍰"])
+            if random.random() < 0.15:
+                slot_view.append([letter, letter, letter])
+            else:
+                slot_view.append(line)
+
+            if len(set(slot_view[-1])) == 1:
+                win_prize *= self.prize[slot_view[-1][0]]
         return (win_prize, slot_view)
 
-        # return self.prize[""]
+    # def win_roll_machine(self):
 
 
-game = SlotMachine()
-print(game.roll_machine())
+# game = SlotMachine()
+# print(game.roll_machine())

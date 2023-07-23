@@ -11,6 +11,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy.orm import declarative_base
 
+import datetime
 
 Base = declarative_base()
 
@@ -76,7 +77,28 @@ def update_balance(session, user_id, server_id, money_change):
     return user.money
 
 
+def get_daily_time(session, user_id, server_id):
+    user = session.query(User).filter_by(server_id=server_id, user_id=user_id).first()
+    return user.daily_time
+
+
+def update_daily_time(session, user_id, server_id):
+    user = session.query(User).filter_by(server_id=server_id, user_id=user_id).first()
+    now = datetime.datetime.now()
+    difference = abs(user.daily_time - now).total_seconds() / 3600.0
+    if difference < 8:
+        difference = datetime.timedelta(hours=8 - difference)
+        return (False, difference)
+    user.daily_time = now
+    session.commit()
+    return (True, 0)
+
+
 # session = connect_db()
-# update_balance(session, 654302335522045972, 714612336022781993, 500)
-# ser = get_balance(session, 654302335522045972, 714612336022781993)
-# print(ser)
+# # update_balance(session, 654302335522045972, 714612336022781993, 500)
+# ser = get_daily_time(session, 654302335522045972, 714612336022781993)
+# now = datetime.datetime.now()
+# res = now - ser
+
+
+# print(abs(now - ser).total_seconds() / 3600.0)
