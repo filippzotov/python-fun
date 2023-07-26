@@ -66,8 +66,6 @@ class Roulette:
 
     def roll_wheel(self, bet_type, position):
         index = random.randint(0, self.wheel_len - 1)
-        if bet_type not in self.bet_types:
-            return 1
         check_bet = self.bet_types[bet_type]
         if check_bet(index, position):
             return (self.bet_wins[bet_type], self.wheel[index])
@@ -103,9 +101,7 @@ class Roulette:
         else:
             win_color = "red"
 
-        if color == win_color:
-            return True
-        return False
+        return color == win_color
 
     def even_odd_bet(self, index, even_odd):
         if self.wheel[index] % 2 == 0:
@@ -113,16 +109,29 @@ class Roulette:
         else:
             win_side = "odd"
 
-        if even_odd == win_side:
-            return True
-        return False
+        return even_odd == win_side
 
     def dozens_bet(self, index, dozen):
-        pass
+        number = self.wheel[index]
+        if number < 12:
+            win_dozen = "first"
+        elif number < 24:
+            win_dozen = "second"
+        else:
+            win_dozen = "third"
+
+        return dozen == win_dozen
 
     def columns_bet(self, index, column):
-        pass
-
-
-game = Roulette()
-print(game.roll_wheel("single", 0))
+        columns = {
+            "first": [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34],
+            "second": [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
+            "third": [3, 6, 9, 12, 15, 21, 24, 27, 30, 33, 36],
+        }
+        number = self.wheel[index]
+        win_col = None
+        for col in columns:
+            if number in columns[col]:
+                win_col = col
+                break
+        return win_col == column

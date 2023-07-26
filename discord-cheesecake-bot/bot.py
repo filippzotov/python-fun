@@ -1,4 +1,3 @@
-import os
 import discord
 from token_file import TOKEN
 from discord.ext import commands
@@ -11,15 +10,15 @@ intents = discord.Intents.all()
 intents.members = True
 intents.messages = True
 bot = commands.Bot(command_prefix="c!", intents=intents)
+bot.remove_command("help")
 
 
 @bot.event
 async def on_ready():
     await bot.load_extension("cogs.music_cog")
+    await bot.load_extension("cogs.help_cog")
+    await bot.load_extension("cogs.roulette_cog")
     print("The bot has logged in!")  # outputs to local command line
-    server = bot.guilds[0]  # gets your server
-    first_channel = server.text_channels[0]  # gets first text channel
-    # await first_channel.send("!ping")  # outputs to Discord
 
 
 @bot.event
@@ -27,7 +26,7 @@ async def on_guild_available(guild):
     await asyncio.sleep(
         2
     )  # Adjust the delay time if needed to ensure members are fetched properly
-
+    # get all members from every server
     server_db = db.server_exists(session, guild.id)
     if not server_db:
         server_db = db.add_server(session, guild.id)
@@ -61,8 +60,8 @@ async def balance(ctx):
 
 @bot.command()
 async def daily(ctx):
-    # res = db.update_daily_time(session, ctx.author.id, ctx.guild.id)
-    if True:
+    res = db.update_daily_time(session, ctx.author.id, ctx.guild.id)
+    if res[0]:
         new_balance = db.update_balance(session, ctx.author.id, ctx.guild.id, 1000)
         await ctx.send(
             f"{ctx.author.mention}\nDaily reward received! You've got {new_balance}🍰"
@@ -86,14 +85,16 @@ async def slots(ctx):
             slot_image += f"|{line[0]}|{line[1]}|{line[2]}|\n"
         if reward == 1:
             await ctx.send(
-                f"{ctx.author.mention}\nYou spining slots for 100🍰...\nYou lost 100🍰\n"
+                f"{ctx.author.mention}\nYou've used 100 🍰 to spin the slots...\n"
                 + slot_image
+                + f"You've lost 100 🍰\n"
             )
             reward -= 101
         else:
             await ctx.send(
-                f"{ctx.author.mention}\nYou spining slots for 100🍰...\nYou win {result[0]}🍰\n"
+                f"{ctx.author.mention}\nYou've used 100 🍰 to spin the slots...\n"
                 + slot_image
+                + f"You've won {result[0]} 🍰\n"
             )
         db.update_balance(session, ctx.author.id, ctx.guild.id, reward)
 
@@ -107,6 +108,32 @@ async def choice(ctx, *, message_text=""):
     else:
         answer = random.choice(input_words)
         await ctx.send(f"{ctx.author.mention}\nThe result is {answer}")
+
+
+@bot.command()
+async def steal(ctx, member: discord.Member = None):
+    if not member:
+        await ctx.send(f"You need to mention someone")
+    else:
+        balance = db.get_balance(session, member.id, ctx.guild.id)
+        if random.random() > 0.5:
+            if not balance:
+                await ctx.send(f"This nigga is broke")
+                return
+            balance = random.randint(1, balance // 2)
+            db.update_balance(session, member.id, ctx.guild.id, -balance)
+            db.update_balance(session, ctx.author.id, ctx.guild.id, +balance)
+            await ctx.send(
+                f"{ctx.author.mention}\nYou seccessfully stole {balance} 🍰 from {member.mention}"
+            )
+        else:
+            if not balance:
+                await ctx.send(
+                    f"This nigga is broke AND you've got caught, it's certified bruh moment"
+                )
+            else:
+                await ctx.send(f"Nigga, you've got caught, you'll fined with 250 🍰")
+            db.update_balance(session, ctx.author.id, ctx.guild.id, -250)
 
 
 session = db.connect_db()

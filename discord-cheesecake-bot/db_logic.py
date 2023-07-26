@@ -24,7 +24,8 @@ class Server(Base):
 
 class User(Base):
     __tablename__ = "user"
-    user_id = Column(Integer, primary_key=True)
+    inner_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
     name = Column(String)
     money = Column(Integer, default=0)
     daily_time = Column(DateTime(timezone=True), server_default=func.now())
@@ -97,8 +98,4 @@ def update_daily_time(session, user_id, server_id):
 # session = connect_db()
 # # update_balance(session, 654302335522045972, 714612336022781993, 500)
 # ser = get_daily_time(session, 654302335522045972, 714612336022781993)
-# now = datetime.datetime.now()
 # res = now - ser
-
-
-# print(abs(now - ser).total_seconds() / 3600.0)
