@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from games.roulette import Roulette
+import db_logic as db
 
 
 class roulette_cog(commands.Cog):
@@ -16,6 +17,15 @@ class roulette_cog(commands.Cog):
             "dozens": self.dozens_check,
             "columns": self.columns_check,
         }
+        self.help_text = """
+        Example of command c!roulette single 6 100 - single bet on number 6 with 100 money bet
+        single - pcick single number form 0 to 36
+        lowhigh - 0-18 low, 19-36 high
+        redblack - pick color, red or black
+        evenodd - pick even or odd
+        dozens - pick dozen, first 0-12, second 13-24, third 25-36
+        columns - pick column, first, second or third
+        """
 
     def input_check(self, input_line):
         if len(input_line) != 3:
@@ -76,9 +86,27 @@ class roulette_cog(commands.Cog):
         else:
             bet_type, bet_arg, amount = args
             mult, win_position = self.game.roll_wheel(bet_type, bet_arg)
-            await ctx.send(
-                f"The win position is {win_position}, you've won {int(amount) * mult}!"
+            if mult < 0:
+                await ctx.send(
+                    f"The win position is {win_position}, you've lost {-(int(amount) * mult)}"
+                )
+            else:
+                await ctx.send(
+                    f"The win position is {win_position}, you've won {int(amount) * mult}!"
+                )
+            db.update_balance(
+                db.connect_db(), ctx.author.id, ctx.guild.id, int(amount) * mult
             )
+
+    @commands.command(name="roulette_help")
+    async def roulette_help(self, ctx):
+        embed = discord.Embed(color=0xFFEE99)
+        embed.set_image(
+            url="https://upload.wikimedia.org/wikipedia/commons/4/43/Roulette_frz_2.png"
+        )
+        embed.set_author(name="Roulette rules and commands")
+        embed.add_field(name="", value=self.help_text, inline=False)
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
