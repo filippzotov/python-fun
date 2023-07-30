@@ -18,6 +18,7 @@ async def on_ready():
     await bot.load_extension("cogs.music_cog")
     await bot.load_extension("cogs.help_cog")
     await bot.load_extension("cogs.roulette_cog")
+    await bot.load_extension("cogs.blackjack_cog")
     print("The bot has logged in!")  # outputs to local command line
 
 
