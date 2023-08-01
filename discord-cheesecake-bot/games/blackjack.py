@@ -4,7 +4,7 @@ import random
 class Blackjack:
     def __init__(self, n) -> None:
         self.deck = []
-        for i in range(n):
+        for _ in range(n):
             self.deck.extend(
                 [
                     i + j
@@ -30,10 +30,10 @@ class Blackjack:
         random.shuffle(self.deck)
         self.players = {}
 
-    def start_game(self, id):
+    def start_game(self, id, money):
         player_hand = [self.deck.pop(), self.deck.pop()]
         dealer_hand = [self.deck.pop(), self.deck.pop()]
-        self.players[id] = (player_hand, dealer_hand)
+        self.players[id] = (player_hand, dealer_hand, money)
         if player_hand == 21 and dealer_hand == 21:
             return 0
 
@@ -42,8 +42,6 @@ class Blackjack:
 
         if player_hand == 21:
             return 1
-
-        self.players[id] = (player_hand, dealer_hand)
 
     def take_card(self, id):
         self.players[id][0].append(self.deck.pop())
