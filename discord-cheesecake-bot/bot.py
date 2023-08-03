@@ -112,14 +112,14 @@ async def choice(ctx, *, message_text=""):
 
 
 @bot.command()
-async def steal(ctx, member: discord.Member = None):
+async def steal(ctx, member):
     if not member:
         await ctx.send(f"You need to mention someone")
     else:
         balance = db.get_balance(session, member.id, ctx.guild.id)
         if random.random() > 0.5:
             if not balance:
-                await ctx.send(f"This nigga is broke")
+                await ctx.send(f"This user is broke")
                 return
             balance = random.randint(1, balance // 2)
             db.update_balance(session, member.id, ctx.guild.id, -balance)
@@ -130,10 +130,10 @@ async def steal(ctx, member: discord.Member = None):
         else:
             if not balance:
                 await ctx.send(
-                    f"This nigga is broke AND you've got caught, it's certified bruh moment"
+                    f"This user is broke AND you've got caught, it's certified bruh moment"
                 )
             else:
-                await ctx.send(f"Nigga, you've got caught, you'll fined with 250 🍰")
+                await ctx.send(f"You've got caught, you'll fined with 250 🍰")
             db.update_balance(session, ctx.author.id, ctx.guild.id, -250)
 
 
