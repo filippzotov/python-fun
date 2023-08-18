@@ -5,26 +5,22 @@ import json
 import csv
 import time
 import base64
+import os
 
 
-def first_page():
-    pass
+def fetch_next_page(mark, url):
+    cursorMark = f"&paging[cursorMark]={mark}"
 
-
-def fetch_next_page(mark, category):
-    url = "https://www.upwork.com/ab/services/pub/api/catalog_search/search/vcs/v3?"
-    cursorMark = f"paging[cursorMark]={mark}"
-    rows = "&paging[rows]=24"
-    category = f"&projectCategoryId=projectCategory:{category}"
-
-    req = requests.get(url + cursorMark + rows + category)
+    req = requests.get(url + cursorMark)
     src = req.text
     products = json.loads(src)
     products = products["data"]
     slugs = []
+    if products["projects"] is None:
+        return None, None
     for project in products["projects"]:
         slugs.append(project["slug"])
-    return (slugs, products["paging"]["nextCursorMark"], products["paging"]["total"])
+    return (slugs, products["paging"]["total"])
 
 
 def write_slugs_to_csv(slugs, category):
@@ -32,24 +28,59 @@ def write_slugs_to_csv(slugs, category):
         f.writelines("\n".join(slugs) + "\n")
 
 
-def get_all_projects():
-    mark = "version_2_eyJzb3J0VmFsdWVzIjpudWxsLCJmcm9tIjoyNCwiYm9vc3RlZFByb2plY3RVaWRzIjpudWxsfQ=="
-    cat = "logoDesign"
+def get_all_projects(category, url):
     count = 0
     total_projects = 25
-
-    while count < total_projects:
+    flag_first = True
+    while total_projects and count < total_projects and count < 9980:
         d = {"sortValues": None, "from": count, "boostedProjectUids": None}
         next_mark = json.dumps(d)
         mark = "version_2_" + base64.b64encode(next_mark.encode("utf-8")).decode(
             "utf-8"
         )
-        slugs, mark, total_projects = fetch_next_page(mark, cat)
-        write_slugs_to_csv(slugs, cat)
+        slugs, new_totoal = fetch_next_page(mark, url)
         count += 24
-        print(mark)
-        time.sleep(0.3)
+        if flag_first:
+            total_projects = new_totoal
+            flag_first = False
+        if slugs is None:
+            continue
+        write_slugs_to_csv(slugs, category)
 
 
-get_all_projects()
-# fetch_next_page(mark, cat)
+def get_categories_from_file(file_name):
+    categories = []
+    with open(file_name, "r") as file:
+        reader = csv.DictReader(file)
+        for line in reader:
+            categories.append(line)
+    return categories
+
+
+if __name__ == "__main__":
+    folder_name = "categories"
+    categories = get_categories_from_file("categories_count.csv")
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    cur_big_category = ""
+    for category in categories:
+        print(category["category"])
+        if os.path.isfile(
+            folder_name + "/" + category["general"] + ".csv"
+        ) or os.path.isfile(folder_name + "/" + category["category"] + ".csv"):
+            print("skip")
+            continue
+        if category["general"] != cur_big_category:
+            cur_big_category = category["general"]
+            skip_to_next_big = False
+            if int(category["count"]) < 10000:
+                skip_to_next_big = True
+                get_all_projects(
+                    folder_name + "/" + category["general"], category["url"]
+                )
+            else:
+                continue
+
+        if skip_to_next_big:
+            continue
+        get_all_projects(folder_name + "/" + category["category"], category["url"])
