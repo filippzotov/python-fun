@@ -5,39 +5,61 @@ import csv
 import time
 import cloudscraper
 import concurrent.futures
+import random
 
 # from selenium import webdriver
 import os
 
+random_secs = [random.randint(4, 5) for i in range(300)]
+
 
 def find_product_info(page_text):
     soup = BeautifulSoup(page_text, "lxml")
-    with open("index.txt", "w", encoding="utf-8") as f:
-        f.write(soup.text)
+    # with open("index.txt", "w", encoding="utf-8") as f:
+    #     f.write(soup.text)
 
     product_info = {
         "title": "",
-        "reviews": "",
         "price": "",
         "details": "",
         "this_project": "",
         "all_projects": "",
     }
+    try:
+        title = soup.find(
+            class_="mb-20 display-rebrand h2 d-none d-lg-block"
+        ).text.strip()
+    except:
+        title = ""
+    try:
+        prices = soup.find_all(class_="tier__price")
+        price = ", ".join([i.text for i in prices[: len(prices) // 2]])
+    except:
+        price = ""
+    if not prices:
+        try:
+            price = soup.find(class_="text-right d-none d-lg-block").text.strip()
+        except:
+            price = ""
+    try:
+        details = soup.find("div", {"id": "project-details"}).text
+    except:
+        details = ""
+    try:
+        this_project = re.findall(
+            r"\d+", soup.find(attrs={"aria-controls": "this_project"}).text
+        )[0]
 
-    title = soup.find(class_="mb-20 display-rebrand h2 d-none d-lg-block").text
-    reviews = soup.find(class_="h2 mb-0 ml-10").text.split()[0]
-    prices = soup.find_all(class_="tier__price")
-    price = ", ".join([i.text for i in prices])
-    details = soup.find("div", {"id": "project-details"}).text
-    this_project = re.findall(
-        r"\d+", soup.find(attrs={"aria-controls": "this_project"}).text
-    )[0]
-    all_projects = re.findall(
-        r"\d+", soup.find(attrs={"aria-controls": "all_projects"}).text
-    )[0]
+    except:
+        this_project = ""
+    try:
+        all_projects = re.findall(
+            r"\d+", soup.find(attrs={"aria-controls": "all_projects"}).text
+        )[0]
+    except:
+        all_projects = ""
 
-    product_info["title"] = title.strip()
-    product_info["reviews"] = reviews
+    product_info["title"] = title
     product_info["price"] = price
     product_info["details"] = details
     product_info["this_project"] = this_project
@@ -71,11 +93,11 @@ def write_product_info_to_file(file_name, products):
         write_header = False
     fieldnames = [
         "title",
-        "reviews",
         "price",
         "details",
         "this_project",
         "all_projects",
+        "url",
     ]
     with open(f"{file_name}", "a", encoding="utf-8", newline="") as write_file:
         writer = csv.DictWriter(write_file, fieldnames=fieldnames)
@@ -84,9 +106,62 @@ def write_product_info_to_file(file_name, products):
         writer.writerows(products)
 
 
+def scrape_urls_from_file(file_name):
+    base_url = "https://www.upwork.com/services/product/"
+    folder_name = "product_pages"
+    global random_secs
+    delay = random_secs.pop()
+    write_file_name = file_name.split("\\")[-1]
+    print(write_file_name)
+    slugs = get_slugs_from_file(file_name)
+    products = []
+    s = cloudscraper.create_scraper()
+    limit_write = 24
+    for slug in slugs:
+        url = base_url + slug[:-1]
+        time.sleep(0.5)
+
+        product = get_product_from_url(s, url)
+        attempts = 5
+        while not product["title"] and attempts:
+            time.sleep(20)
+            product = get_product_from_url(s, url)
+            attempts -= 1
+        products.append(product)
+        limit_write -= 1
+        if not limit_write:
+            write_product_info_to_file(folder_name + "/" + write_file_name, products)
+            limit_write = 24
+            products = []
+    print("ended")
+
+
+def get_product_from_url(scraper, url):
+    req = scraper.get(url, headers=headers)
+    src = req.text
+    # with open("bybass.txt", "w", encoding="utf-8") as f:
+    #     f.write(src)
+    print(url)
+    try:
+        product = find_product_info(src)
+    except:
+        product = {
+            "title": "",
+            "price": "",
+            "details": "",
+            "this_project": "",
+            "all_projects": "",
+        }
+
+        print("skiped")
+    finally:
+        product["url"] = url
+    return product
+
+
 if __name__ == "__main__":
     base_url = "https://www.upwork.com/services/product/"
-    session = requests.Session()
+    # session = requests.Session()
     read_dir = "categories"
     files = get_file_names_from_dir(read_dir)
 
@@ -94,43 +169,17 @@ if __name__ == "__main__":
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
 
-    for file_name in files:
-        products = []
-        slugs = get_slugs_from_file(file_name)
-        limit_write = 24
-        write_file_name = file_name.split("\\")[-1]
-        print(write_file_name)
-        for slug in slugs:
-            url = base_url + slug[:-1]
-            s = cloudscraper.create_scraper()
-            req = s.get(url, headers=headers)
-            # req = session.get(url, headers=headers, timeout=2)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        results = list(executor.map(scrape_urls_from_file, files))
 
-            src = req.text
-            time.sleep(0.5)
-            with open("bybass.txt", "w", encoding="utf-8") as f:
-                f.write(src)
-            print(url)
-            try:
-                product = find_product_info(src)
 
-            except AttributeError:
-                product = [
-                    {
-                        "title": None,
-                        "reviews": None,
-                        "price": None,
-                        "details": None,
-                        "this_project": None,
-                        "all_projects": None,
-                    }
-                ]
-            product["url"] = url
-            products.append(product)
-            limit_write -= 1
-            if not limit_write:
-                write_product_info_to_file(
-                    folder_name + "/" + write_file_name, products
-                )
-                limit_write = 24
-                products = []
+# def test_func():
+#     url = "https://www.upwork.com/services/product/admin-customer-support-a-fantastic-flyer-design-for-your-business-campaign-1668851164277727232"
+#     s = cloudscraper.create_scraper()
+#     req = s.get(url, headers=headers)
+#     src = req.text
+#     product = find_product_info(src)
+#     print(product)
+
+
+# test_func()
