@@ -27,6 +27,8 @@ ALIENS_IN_LINE = 7
 ALIEN_LINES = 4
 ALIEN_COUNT = ALIENS_IN_LINE * ALIEN_LINES
 
+ALIEN_WIDTH = 20
+
 ALIEN_KILLED = pygame.USEREVENT + 1
 PLAYER_LOST = pygame.USEREVENT + 2
 
@@ -60,8 +62,8 @@ class Alien:
         self.rect.y += 40
         self.y += 40
 
-    def change_direction(self, left=False):
-        self.left = left
+    def change_direction(self):
+        self.left = not self.left
 
     def kill(self):
         self.alive = False
@@ -149,19 +151,42 @@ def handle_bullets(player: Player, aliens):
 
 
 def handle_aliens_movement(aliens):
-    for alien_line in aliens:
-        if not alien_line:
-            continue
-        if alien_line[-1].x > WIDTH - 15 - alien_line[-1].width:
-            for alien in alien_line:
-                alien.change_direction(left=True)
-                alien.move_down()
-        elif alien_line[0].x < 15:
-            for alien in alien_line:
-                alien.change_direction(left=False)
-                alien.move_down()
+    def handle_right_move(aliens):
+        border_right_x = 0
+        for alien_line in aliens:
+            if not alien_line:
+                continue
+            for alien in alien_line[::-1]:
+                if alien.alive:
+                    border_right_x = max(alien.x, border_right_x)
+                    break
+        if border_right_x > WIDTH - 15 - ALIEN_WIDTH:
+            return True
+        return False
 
+    def handle_left_move(aliens):
+        border_left_x = WIDTH
+        for alien_line in aliens:
+            if not alien_line:
+                continue
+            for alien in alien_line:
+                if alien.alive:
+                    border_left_x = min(alien.x, border_left_x)
+                    break
+        if border_left_x < 15:
+            return True
+        return False
+
+    if aliens[0][0].left:
+        change_dir = handle_left_move(aliens)
+    else:
+        change_dir = handle_right_move(aliens)
+
+    for alien_line in aliens:
         for alien in alien_line:
+            if change_dir:
+                alien.change_direction()
+                alien.move_down()
             alien.move()
             if alien.alive and alien.y > HEIGHT - alien.height - 40:
                 pygame.event.post(pygame.event.Event(PLAYER_LOST))
