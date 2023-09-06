@@ -46,7 +46,10 @@ def draw(field):
         for j, block in enumerate(line):
             if block:
                 Block = pygame.Rect(
-                    BLOCK_SIZE * j, BLOCK_SIZE * i, BLOCK_SIZE, BLOCK_SIZE
+                    BLOCK_SIZE * j + 1,
+                    BLOCK_SIZE * i + 1,
+                    BLOCK_SIZE - 2,
+                    BLOCK_SIZE - 2,
                 )
                 pygame.draw.rect(WIN, COLORS[block], Block)
             else:
@@ -259,25 +262,18 @@ class Lright:
         self.position = (self.position + 1) % 4
 
 
-def handle_collision(field, new_figure):
-    lowest_point_row = -1
-    blocks_to_check = []
-    for block in new_figure.blocks:
-        if block.row > lowest_point_row:
-            lowest_point_row = block.row
-            blocks_to_check = [block]
-        elif block.row == lowest_point_row:
-            blocks_to_check.append(block)
-    for block in blocks_to_check:
-        if block.row + 1 >= FIELD_ROWS:
-            return False
-        if field[block.row + 1][block.col] != 0:
-            return False
-
+def handle_collision(field, figure):
+    blocks_of_firue = [(block.row, block.col) for block in figure.blocks]
+    for block in figure.blocks:
+        if (block.row + 1, block.col) not in blocks_of_firue:
+            if block.row + 1 >= FIELD_ROWS:
+                return False
+            if field[block.row + 1][block.col] != 0:
+                return False
     return True
 
 
-def move_figure(field, figure):
+def move_figure_down(field, figure):
     if not handle_collision(field, figure):
         return False
     for block in figure.blocks:
@@ -317,25 +313,13 @@ def move_figure_side(field, figure, direction):
 
 
 def handle_figure_side_move(field, figure, direction):
-    if direction == -1:
-        side_point_row = FIELD_ROWS
-        side_point_col = FIELD_COLS
-        for block in figure.blocks:
-            if block.col < side_point_col:
-                side_point_row = block.row
-                side_point_col = block.col
-    else:
-        side_point_row = -1
-        side_point_col = -1
-        for block in figure.blocks:
-            if block.col > side_point_col:
-                side_point_row = block.row
-                side_point_col = block.col
-
-    if side_point_col + direction >= FIELD_COLS or side_point_col + direction < 0:
-        return True
-    if field[side_point_row][side_point_col + direction] != 0:
-        return True
+    blocks_of_firue = [(block.row, block.col) for block in figure.blocks]
+    for block in figure.blocks:
+        if (block.row, block.col + direction) not in blocks_of_firue:
+            if block.col + direction >= FIELD_COLS or block.col + direction < 0:
+                return True
+            if field[block.row][block.col + direction] != 0:
+                return True
     move_figure_side(field, figure, direction)
     return False
 
@@ -410,13 +394,15 @@ def main():
                     handle_figure_side_move(field, figure, 1)
                 elif event.key == pygame.K_SPACE:
                     while True:
-                        if not move_figure(field, figure):
+                        if not move_figure_down(field, figure):
                             figure_falling = False
                             check_lines(field)
                             break
 
                 elif event.key == pygame.K_w:
                     rotate_figure(field, figure)
+                elif event.key == pygame.K_r:
+                    run = False
 
         if not figure_falling:
             figure_falling = True
@@ -425,7 +411,7 @@ def main():
 
         current_time = pygame.time.get_ticks()
         if current_time - last_fall_time > fall_interval:
-            if not move_figure(field, figure):
+            if not move_figure_down(field, figure):
                 figure_falling = False
                 check_lines(field)
             last_fall_time = current_time
