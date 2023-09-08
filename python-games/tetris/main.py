@@ -35,10 +35,13 @@ FPS = 60
 FIELD_ROWS = 20
 FIELD_COLS = 10
 
+
+FONT = pygame.font.SysFont("comicsans", 22)
+
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 
 
-def draw(field):
+def draw(field, score):
     WIN.fill(WHITE)
     background = pygame.Rect(0, 0, BLOCK_SIZE * FIELD_COLS, BLOCK_SIZE * FIELD_ROWS)
     pygame.draw.rect(WIN, DARK_GRAY, background)
@@ -61,6 +64,8 @@ def draw(field):
                 )
                 pygame.draw.rect(WIN, GRAY, Block)
 
+    win_text = FONT.render(f"{score}", 1, BLACK)
+    WIN.blit(win_text, (200, 10))
     pygame.display.update()
 
 
@@ -118,8 +123,8 @@ class Tshape:
             self.blocks.append(Block(row + 1, col + i))
 
     def rotate(self):
-        row = self.blocks[3].row
-        col = self.blocks[3].col
+        row = self.blocks[2].row
+        col = self.blocks[2].col
         self.blocks = []
         if self.position == 0:
             self.blocks.append(Block(row, col + 1))
@@ -301,6 +306,7 @@ def check_lines(field):
 
     for _ in range(len(rows_to_remove)):
         field.insert(0, [0 for i in range(FIELD_COLS)])
+    return len(rows_to_remove)
 
 
 def move_figure_side(field, figure, direction):
@@ -357,12 +363,14 @@ def rotate_figure(field, figure):
     remove_add_figure(field, figure, remove=False)
 
 
-def main():
-    run = True
-    clock = pygame.time.Clock()
-    fall_interval = 300
-    last_fall_time = pygame.time.get_ticks()
+def check_lost(field, figure):
+    for block in figure.blocks:
+        if field[block.row][block.col] != 0:
+            return True
+    return False
 
+
+def create_new_figure(field):
     figures = {
         0: Stick,
         1: Box,
@@ -372,14 +380,52 @@ def main():
         5: Lleft,
         6: Lright,
     }
+    figure = figures[random.randint(0, 6)](0, 4)
+    if check_lost(field, figure):
+        return False
+    return figure
+
+
+def end_game(text):
+    win_text = FONT.render(text, 1, BLACK)
+    WIN.blit(
+        win_text,
+        (
+            WIDTH // 2 - win_text.get_width() // 2,
+            HEIGHT // 2 - win_text.get_height() // 2,
+        ),
+    )
+    pygame.display.update()
+    pygame.time.delay(5000)
+
+
+def main():
+    run = True
+
+    clock = pygame.time.Clock()
+
+    score = 0
+    fall_interval = 500
+    levels = {
+        1: 500,
+        2: 400,
+        3: 300,
+        4: 200,
+        5: 100,
+    }
+    level = 1
+    count_figures = 1
+    last_fall_time = pygame.time.get_ticks()
 
     figure_falling = True
     # figure = Block(0, 5)
 
-    figure = figures[random.randint(0, 6)](0, 5)
-    # figure = Lright(0, 5)
+    # figure = Tshape(0, 5)
     field = [[0 for i in range(FIELD_COLS)] for j in range(FIELD_ROWS)]
 
+    score_for_line = {1: 40, 2: 100, 3: 300, 4: 1200, 0: 0}
+
+    figure = create_new_figure(field)
     while run:
         clock.tick(FPS)
         for event in pygame.event.get():
@@ -396,7 +442,8 @@ def main():
                     while True:
                         if not move_figure_down(field, figure):
                             figure_falling = False
-                            check_lines(field)
+                            score += score_for_line[check_lines(field)]
+
                             break
 
                 elif event.key == pygame.K_w:
@@ -404,19 +451,32 @@ def main():
                 elif event.key == pygame.K_r:
                     run = False
 
+        game_end = False
         if not figure_falling:
             figure_falling = True
-            # figure = Lright(0, 5)
-            figure = figures[random.randint(0, 6)](0, 5)
+            # figure = Tshape(0, 5)
+            figure = create_new_figure(field)
+            count_figures += 1
+
+            if not figure:
+                game_end = True
+
+        if count_figures > 30:
+            count_figures = 1
+            level += 1
+            level = min(level, 5)
+        if game_end:
+            end_game("You lost")
+            break
 
         current_time = pygame.time.get_ticks()
-        if current_time - last_fall_time > fall_interval:
+        if current_time - last_fall_time > levels[level]:
             if not move_figure_down(field, figure):
                 figure_falling = False
-                check_lines(field)
+                score += score_for_line[check_lines(field)]
             last_fall_time = current_time
 
-        draw(field)
+        draw(field, score)
 
     main()
 
